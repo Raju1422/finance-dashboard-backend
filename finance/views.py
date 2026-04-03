@@ -2,7 +2,12 @@ from rest_framework import generics
 from .models import Category,Record
 from .serializers import CategorySerializer,RecordSerializer,RecordDetailSerializer
 from rest_framework.permissions import IsAuthenticated
-from .permissions import RecordPermission   
+from .permissions import RecordPermission
+from rest_framework.views import APIView   
+from django.db.models import Sum
+from django.db.models.functions import TruncMonth,TruncWeek
+from rest_framework.response import Response
+from rest_framework import status
 
 class CategoryListCreateAPIView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
@@ -44,3 +49,60 @@ class RecordRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     def perform_destroy(self, instance):
         instance.is_deleted = True  
         instance.save()
+
+
+class DashboardAPIView(APIView):
+    permission_classes =[IsAuthenticated]
+
+    def get(self,request):
+        records = Record.objects.filter(is_deleted=False)
+
+        #total income 
+        total_income = records.filter(category__type='income').aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+
+        #total expense
+        total_expense =  records.filter(category__type='expense').aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+
+        # Net Balance
+        net_balance = total_income - total_expense
+
+        # category-wise totals
+        category_data = records.values('category__name').annotate(
+            total=Sum('amount')
+        )
+        
+        #recent activity
+        recent_records = records.order_by('-created_at')[:5].values(
+            'id',
+            'amount',
+            'category__name',
+            'category__type',
+            'date',
+            'description'
+        )
+
+        #monthly trends
+        monthly_trends = records.annotate(month=TruncMonth('date')).values('month', 'category__type').annotate(
+            total=Sum('amount')
+        ).order_by('month')
+
+        # weekly trends
+        weekly_trends = records.annotate(week=TruncWeek('date')).values('week', 'category__type').annotate(
+            total=Sum('amount')
+        ).order_by('week')
+        
+        return Response({
+            "total_income": total_income,
+            "total_expense": total_expense,
+            "net_balance": net_balance,
+            "category_breakdown": list(category_data),
+            "recent_records": list(recent_records),
+            "monthly_trends": list(monthly_trends),
+            "weekly_trends": list(weekly_trends)
+        }, status=status.HTTP_200_OK)
+
+
