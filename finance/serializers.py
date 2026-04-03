@@ -27,7 +27,9 @@ class CategorySerializer(serializers.ModelSerializer):
             exists = Category.objects.filter(name=name, type=type_).exists()
 
         if exists:
-            raise serializers.ValidationError("Category with this name and type already exists")
+            raise serializers.ValidationError({
+                "category": "Category with this name and type already exists"
+            })
 
         return data
 
@@ -56,8 +58,10 @@ class RecordSerializer(serializers.ModelSerializer):
     def validate(self, data):
         category = data.get('category')
 
-        if not category:
-            raise serializers.ValidationError("Category is required")
+        if category is None:
+            raise serializers.ValidationError({
+                "category": "Category is required"
+            })
 
         return data
     

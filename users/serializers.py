@@ -12,6 +12,7 @@ class RoleSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
+    role = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all())
 
     class Meta:
         model = User
@@ -20,6 +21,9 @@ class UserSerializer(serializers.ModelSerializer):
     def validate(self, data):
         password = data.get('password')
         confirm_password = data.get('confirm_password')
+
+        if not password or not confirm_password:
+            raise serializers.ValidationError("Password and confirm password are required")
 
         if password != confirm_password:
             raise serializers.ValidationError("Passwords do not match")
@@ -38,6 +42,7 @@ class UserSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
+    
 class CustomTokenSerializer(TokenObtainPairSerializer):
     username_field = 'email'
 
@@ -55,6 +60,7 @@ class UserRetrieveUpdateSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
 
         if password:
+            validate_password(password)
             instance.set_password(password)
 
         instance.save()

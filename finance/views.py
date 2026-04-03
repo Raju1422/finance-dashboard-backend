@@ -9,6 +9,8 @@ from django.db.models.functions import TruncMonth,TruncWeek
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.filters import SearchFilter
+from datetime import datetime
+from rest_framework.exceptions import ValidationError
 
 
 class CategoryListCreateAPIView(generics.ListCreateAPIView):
@@ -29,18 +31,23 @@ class RecordListCreateAPIView(generics.ListCreateAPIView):
     def get_queryset(self):
         queryset = Record.objects.filter(is_deleted=False)
 
-        # 🔍 Get query params
         date = self.request.query_params.get('date')
         category = self.request.query_params.get('category')
         type_ = self.request.query_params.get('type')
 
         if date:
-            queryset = queryset.filter(date=date)
+            try:
+                parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
+                queryset = queryset.filter(date=parsed_date)
+            except ValueError:
+                raise ValidationError({"date": "Invalid date format. Use YYYY-MM-DD"})
 
         if category:
             queryset = queryset.filter(category_id=category)
 
         if type_:
+            if type_ not in ['income', 'expense']:
+                raise ValidationError({"type": "Invalid type. Must be 'income' or 'expense'"})
             queryset = queryset.filter(category__type=type_)
 
         return queryset
