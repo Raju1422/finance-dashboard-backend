@@ -8,6 +8,8 @@ from django.db.models import Sum
 from django.db.models.functions import TruncMonth,TruncWeek
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.filters import SearchFilter
+
 
 class CategoryListCreateAPIView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
@@ -18,7 +20,9 @@ class RecordListCreateAPIView(generics.ListCreateAPIView):
     queryset = Record.objects.filter(is_deleted=False)
     serializer_class = RecordSerializer
     permission_classes = [IsAuthenticated,RecordPermission] 
-
+    filter_backends = [SearchFilter]
+    search_fields = ['description', 'category__name', 'user__email']
+    
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
@@ -45,6 +49,7 @@ class RecordRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Record.objects.filter(is_deleted=False)
     serializer_class = RecordDetailSerializer
     permission_classes = [IsAuthenticated,RecordPermission]
+   
 
     def perform_destroy(self, instance):
         instance.is_deleted = True  
