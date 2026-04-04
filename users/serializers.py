@@ -46,6 +46,28 @@ class UserSerializer(serializers.ModelSerializer):
 class CustomTokenSerializer(TokenObtainPairSerializer):
     username_field = 'email'
 
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        token['email'] = user.email
+        token['role'] = user.role.name if user.role else None
+
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+
+        data['user'] = {
+            "id": self.user.id,
+            "email": self.user.email,
+            "name": self.user.name,
+            "role": self.user.role.name if self.user.role else None,
+        }
+
+        return data
+    
+
 class UserRetrieveUpdateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
 
