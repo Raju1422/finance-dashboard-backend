@@ -429,6 +429,10 @@ finance_dashboard_backend/
 |   ├── asgi.py
 |   ├── wsgi.py
 |
+├── docs/
+│   ├── hla.png
+│   ├── lla.png
+|
 ├── requirements.txt
 ├── manage.py
 └── README.md
