@@ -1,6 +1,6 @@
 from rest_framework import generics
 from .models import Category,Record
-from .serializers import CategorySerializer,RecordSerializer,RecordDetailSerializer
+from .serializers import CategorySerializer,RecordSerializer,RecordDetailSerializer,DashboardSerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import RecordPermission
 from rest_framework.views import APIView   
@@ -11,12 +11,12 @@ from rest_framework import status
 from rest_framework.filters import SearchFilter
 from datetime import datetime
 from rest_framework.exceptions import ValidationError
-
+from users.permissions import IsAdmin  
 
 class CategoryListCreateAPIView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes =[IsAuthenticated]
+    permission_classes =[IsAuthenticated,IsAdmin]
 
 class RecordListCreateAPIView(generics.ListCreateAPIView):
     queryset = Record.objects.filter(is_deleted=False)
@@ -43,7 +43,13 @@ class RecordListCreateAPIView(generics.ListCreateAPIView):
                 raise ValidationError({"date": "Invalid date format. Use YYYY-MM-DD"})
 
         if category:
-            queryset = queryset.filter(category_id=category)
+            try:
+                category_id = int(category)
+            except ValueError:
+                raise ValidationError({
+                "category": "Category must be a valid ID"
+                })
+            queryset = queryset.filter(category_id=category_id)
 
         if type_:
             if type_ not in ['income', 'expense']:
@@ -106,8 +112,7 @@ class DashboardAPIView(APIView):
         weekly_trends = records.annotate(week=TruncWeek('date')).values('week', 'category__type').annotate(
             total=Sum('amount')
         ).order_by('week')
-        
-        return Response({
+        data = {
             "total_income": total_income,
             "total_expense": total_expense,
             "net_balance": net_balance,
@@ -115,6 +120,9 @@ class DashboardAPIView(APIView):
             "recent_records": list(recent_records),
             "monthly_trends": list(monthly_trends),
             "weekly_trends": list(weekly_trends)
-        }, status=status.HTTP_200_OK)
+        }
+        
+        serializer = DashboardSerializer(data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 

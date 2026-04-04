@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Role,User
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.core.exceptions import ValidationError 
 
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
@@ -82,7 +83,10 @@ class UserRetrieveUpdateSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
 
         if password:
-            validate_password(password)
+            try:
+                validate_password(password)
+            except ValidationError as e:
+                raise serializers.ValidationError({"password": list(e.messages)})
             instance.set_password(password)
 
         instance.save()

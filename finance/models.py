@@ -13,6 +13,7 @@ class Category(models.Model):
 
     class Meta:
         unique_together = ['name', 'type']
+        ordering = ['id']
 
     def __str__(self):
         return f"{self.name} ({self.type})"
